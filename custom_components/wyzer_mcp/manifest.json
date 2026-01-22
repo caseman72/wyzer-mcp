@@ -1,0 +1,11 @@
+{
+  "domain": "wyzer_mcp",
+  "name": "Wyze MCP",
+  "version": "1.0.0",
+  "documentation": "https://github.com/your-repo/wyzer-mcp",
+  "dependencies": ["mcp"],
+  "codeowners": [],
+  "requirements": [],
+  "iot_class": "local_polling",
+  "config_flow": true
+}

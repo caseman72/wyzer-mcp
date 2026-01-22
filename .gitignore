@@ -1,0 +1,12 @@
+node_modules/
+.env.local
+.env
+.tokens.json
+.devices.json
+.DS_Store
+.rcs
+config.json
+config.local.json
+*.log
+.claude/
+custom_components/wyzer_mcp/devices.yaml

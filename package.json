@@ -1,0 +1,23 @@
+{
+  "name": "wyzer-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Wyze smart home devices",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:http": "node src/index.js --http"
+  },
+  "keywords": [
+    "wyze",
+    "mcp",
+    "smart-home",
+    "home-assistant"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@caseman72/wyzer-api": "^1.1.2",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  }
+}

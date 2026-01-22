@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Wyze MCP Server",
+        "data": {
+          "mcp_host": "MCP Server Host",
+          "mcp_port": "MCP Server Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to MCP server. Make sure it's running."
+    }
+  }
+}

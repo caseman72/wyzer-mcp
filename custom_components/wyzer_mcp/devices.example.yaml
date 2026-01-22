@@ -1,0 +1,29 @@
+# Wyze MCP Devices
+# Copy this file to devices.yaml and configure your devices.
+# Use `list_devices` MCP tool to find your device IDs.
+
+switches:
+  # Plugs
+  - id: my_plug
+    name: My Plug
+    device_id: "XXXXXXXXXXXX"    # Wyze device ID (MAC address)
+    device_type: plug
+
+  # Wall Switches
+  - id: my_switch
+    name: My Switch
+    device_id: "LD_SS1_XXXXXXXXXXXX"
+    device_type: switch
+
+thermostats:
+  # Standalone thermostat
+  - id: my_thermostat
+    name: My Thermostat
+    device_id: "CO_EA1_XXXXXXXXXXXXXXXXXXXXXXXX"
+
+  # Combined thermostat + plug (for space heaters)
+  # Creates a separate "Heater" switch entity for the plug
+  - id: my_combined_thermostat
+    name: My Combined
+    device_id: "combined_CO_EA1_XXXXXXXXXXXXXXXXXXXXXXXX"
+    plug_id: "XXXXXXXXXXXX"

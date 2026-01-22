@@ -6,14 +6,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 
 const defaultConfig = {
-  wyze: {
-    email: '',
-    passwordHash: '',
-    keyId: '',
-    apiKey: '',
-    authApiKey: '',
-    apiKeyExpires: ''
-  },
   server: {
     transport: 'stdio',
     httpPort: 8000,
@@ -61,30 +53,8 @@ function loadConfig() {
   }
 
   // Allow environment variable overrides
-  if (process.env.WYZE_EMAIL) config.wyze.email = process.env.WYZE_EMAIL;
-  if (process.env.WYZE_PASSWORD_HASH) config.wyze.passwordHash = process.env.WYZE_PASSWORD_HASH;
-  if (process.env.WYZE_KEY_ID) config.wyze.keyId = process.env.WYZE_KEY_ID;
-  if (process.env.WYZE_API_KEY) config.wyze.apiKey = process.env.WYZE_API_KEY;
-  if (process.env.WYZE_AUTH_API_KEY) config.wyze.authApiKey = process.env.WYZE_AUTH_API_KEY;
-  if (process.env.WYZE_API_KEY_EXPIRES) config.wyze.apiKeyExpires = process.env.WYZE_API_KEY_EXPIRES;
   if (process.env.WYZER_HTTP_PORT) config.server.httpPort = parseInt(process.env.WYZER_HTTP_PORT, 10);
   if (process.env.WYZER_HTTP_HOST) config.server.httpHost = process.env.WYZER_HTTP_HOST;
-
-  return config;
-}
-
-function validateConfig(config) {
-  const errors = [];
-
-  if (!config.wyze.email) errors.push('wyze.email is required');
-  if (!config.wyze.passwordHash) errors.push('wyze.passwordHash is required');
-  if (!config.wyze.keyId) errors.push('wyze.keyId is required');
-  if (!config.wyze.apiKey) errors.push('wyze.apiKey is required');
-  if (!config.wyze.authApiKey) errors.push('wyze.authApiKey is required');
-
-  if (errors.length > 0) {
-    throw new Error(`Configuration errors:\n${errors.join('\n')}`);
-  }
 
   return config;
 }
@@ -93,7 +63,7 @@ let cachedConfig = null;
 
 export function getConfig() {
   if (!cachedConfig) {
-    cachedConfig = validateConfig(loadConfig());
+    cachedConfig = loadConfig();
   }
   return cachedConfig;
 }

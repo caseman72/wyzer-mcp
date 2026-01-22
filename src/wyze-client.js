@@ -1,5 +1,4 @@
 import Wyze from '@caseman72/wyzer-api';
-import { getConfig } from './config.js';
 
 let wyzeInstance = null;
 let isInitialized = false;
@@ -9,17 +8,11 @@ export async function getWyzeClient() {
     return wyzeInstance;
   }
 
-  const config = getConfig();
-
-  wyzeInstance = new Wyze({
-    email: config.wyze.email,
-    passwordHash: config.wyze.passwordHash,
-    keyId: config.wyze.keyId,
-    apiKey: config.wyze.apiKey,
-    authApiKey: config.wyze.authApiKey,
-    apiKeyExpires: config.wyze.apiKeyExpires,
-    quiet: true
-  });
+  // wyzer-api 1.2+ reads credentials from .env.local in:
+  // - Current working directory
+  // - ~/.config/wyze/.env.local
+  // - ~/.wyze.env.local
+  wyzeInstance = new Wyze({ quiet: true });
 
   await wyzeInstance.login();
   isInitialized = true;

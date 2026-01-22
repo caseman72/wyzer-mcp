@@ -19,41 +19,48 @@ npm install
 
 ## Configuration
 
-1. Copy the example config file:
-   ```bash
-   cp config.example.json config.json
-   ```
+### Wyze Credentials
 
-2. Edit `config.json` with your Wyze credentials:
-   ```json
-   {
-     "wyze": {
-       "email": "your-wyze-email@example.com",
-       "passwordHash": "your-password-md5-hash",
-       "keyId": "your-api-key-id",
-       "apiKey": "your-api-key",
-       "authApiKey": "your-auth-api-key",
-       "apiKeyExpires": "2027-01-17"
-     }
-   }
-   ```
+Wyze API credentials are managed by [@caseman72/wyzer-api](https://github.com/caseman72/wyzer-api) via `.env.local`. The file is searched in:
 
-### Getting Wyze API Keys
+1. Current working directory
+2. `~/.config/wyze/.env.local`
+3. `~/.wyze.env.local`
 
-You need to generate API keys from Wyze. Visit the [Wyze Developer Portal](https://developer-api-console.wyze.com/) to create your API credentials.
+Create a `.env.local` file with your Wyze credentials:
 
-The password hash is the MD5 hash of your Wyze account password.
+```bash
+WYZE_EMAIL=your-wyze-email@example.com
+WYZE_PASSWORD_HASH=your-password-md5-hash
+WYZE_KEY_ID=your-api-key-id
+WYZE_API_KEY=your-api-key
+WYZE_AUTH_API_KEY=your-auth-api-key
+```
 
-### Environment Variables
+Visit the [Wyze Developer Portal](https://developer-api-console.wyze.com/) to create your API credentials. The password hash is the MD5 hash of your Wyze account password.
 
-You can also configure credentials via environment variables:
+### Server Configuration (Optional)
 
-- `WYZE_EMAIL` - Wyze account email
-- `WYZE_PASSWORD_HASH` - MD5 hash of your Wyze password
-- `WYZE_KEY_ID` - API key ID
-- `WYZE_API_KEY` - API key
-- `WYZE_AUTH_API_KEY` - Auth API key
-- `WYZE_API_KEY_EXPIRES` - API key expiration date (informational)
+Copy `config.example.json` to `config.json` to customize server settings:
+
+```json
+{
+  "server": {
+    "transport": "stdio",
+    "httpPort": 8000,
+    "httpHost": "127.0.0.1"
+  },
+  "devices": {
+    "refreshIntervalMinutes": 60
+  },
+  "monitoring": {
+    "enabled": false,
+    "logFile": "./wyzer-mcp-requests.log"
+  }
+}
+```
+
+Environment variable overrides:
 - `WYZER_HTTP_PORT` - HTTP server port (default: 8000)
 - `WYZER_HTTP_HOST` - HTTP server host (default: 127.0.0.1)
 

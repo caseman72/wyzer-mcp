@@ -29,19 +29,17 @@ async def async_setup_entry(
     port = data["port"]
 
     entities = [
-        WyzeMcpApiStatusSensor(host, port),
+        WyzeMcpApiRateSensor(host, port),
+        WyzeMcpApiExpirationSensor(host, port),
     ]
 
     async_add_entities(entities)
 
 
-class WyzeMcpApiStatusSensor(SensorEntity):
-    """Sensor showing Wyze API rate limit status."""
+class WyzeMcpBaseSensor(SensorEntity):
+    """Base class for Wyze MCP sensors."""
 
     _attr_should_poll = True
-    _attr_name = "Wyze API Status"
-    _attr_unique_id = "wyzer_mcp_api_status"
-    _attr_icon = "mdi:api"
 
     def __init__(self, host: str, port: int):
         """Initialize the sensor."""
@@ -153,6 +151,14 @@ class WyzeMcpApiStatusSensor(SensorEntity):
             _LOGGER.error("MCP tool call failed: %s", e)
             return None
 
+
+class WyzeMcpApiRateSensor(WyzeMcpBaseSensor):
+    """Sensor showing Wyze API rate limit status."""
+
+    _attr_name = "Wyze API Rate Status"
+    _attr_unique_id = "wyzer_mcp_api_rate_status"
+    _attr_icon = "mdi:api"
+
     async def async_update(self) -> None:
         """Fetch the current API status."""
         result = await self._call_tool("get_api_status")
@@ -177,4 +183,31 @@ class WyzeMcpApiStatusSensor(SensorEntity):
                 "cached_device_count": cache.get("device_count"),
             }
 
-            _LOGGER.debug("Updated API status: remaining=%s, reset_in=%s", remaining, reset_in)
+
+class WyzeMcpApiExpirationSensor(WyzeMcpBaseSensor):
+    """Sensor showing Wyze API key expiration."""
+
+    _attr_name = "Wyze API Expiration"
+    _attr_unique_id = "wyzer_mcp_api_expiration"
+    _attr_icon = "mdi:calendar-clock"
+
+    async def async_update(self) -> None:
+        """Fetch the current API key expiration."""
+        result = await self._call_tool("get_api_status")
+
+        if result and "error" not in result:
+            api_key = result.get("api_key", {})
+
+            expires = api_key.get("expires")
+            days_remaining = api_key.get("days_remaining")
+
+            # Main value is days remaining
+            self._attr_native_value = days_remaining
+
+            # Additional attributes
+            self._attr_extra_state_attributes = {
+                "expires": expires,
+                "days_remaining": days_remaining,
+                "is_expired": api_key.get("is_expired"),
+                "is_expiring_soon": api_key.get("is_expiring_soon"),
+            }

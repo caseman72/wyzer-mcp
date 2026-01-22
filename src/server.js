@@ -236,11 +236,12 @@ export function createMcpServer() {
   // Tool: get_api_status
   server.tool(
     'get_api_status',
-    'Get Wyze API rate limit status. Returns remaining calls, reset time, and cache info.',
+    'Get Wyze API rate limit status and key expiration. Returns remaining calls, reset time, cache info, and API key expiration.',
     {},
     createToolWrapper('get_api_status', async () => {
       const wyze = await getWyzeClient();
       const rateLimit = wyze.getRateLimitStatus();
+      const apiKeyExpiry = wyze.checkApiKeyExpiry();
       const cache = getDeviceCache();
 
       return {
@@ -251,6 +252,12 @@ export function createMcpServer() {
               remaining: rateLimit.remaining,
               reset_by: rateLimit.resetBy ? new Date(rateLimit.resetBy).toISOString() : null,
               reset_in_seconds: rateLimit.resetIn ? Math.ceil(rateLimit.resetIn / 1000) : null
+            },
+            api_key: {
+              expires: apiKeyExpiry.expires,
+              days_remaining: apiKeyExpiry.daysRemaining,
+              is_expired: apiKeyExpiry.isExpired,
+              is_expiring_soon: apiKeyExpiry.isExpiringSoon
             },
             cache: {
               last_refresh: cache.lastRefresh ? new Date(cache.lastRefresh).toISOString() : null,

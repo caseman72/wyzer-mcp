@@ -104,6 +104,15 @@ class WyzeMcpThermostat(ClimateEntity):
         self._attr_hvac_mode = None
         self._attr_hvac_action = None
         self._attr_is_aux_heat = None
+        self._is_online = None  # Track thermostat connectivity
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available (thermostat is connected)."""
+        # If we haven't fetched state yet, assume available
+        if self._is_online is None:
+            return True
+        return self._is_online
 
     async def async_added_to_hass(self) -> None:
         """Fetch initial state when entity is added to HA."""
@@ -278,6 +287,9 @@ class WyzeMcpThermostat(ClimateEntity):
             # Handle combined device (nested thermostat data) or direct thermostat
             thermo_data = result.get("thermostat", result)
             plug_data = result.get("plug", {})
+
+            # Track thermostat connectivity for availability
+            self._is_online = thermo_data.get("is_online", True)
 
             # Current temperature and humidity
             self._attr_current_temperature = thermo_data.get("temperature")

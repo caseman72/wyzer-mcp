@@ -173,6 +173,9 @@ Create `~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist`:
         <string>/opt/homebrew/bin/node</string>
         <string>/path/to/wyzer-mcp/src/index.js</string>
     </array>
+    <!-- Required: allows Wyze API to write token cache -->
+    <key>WorkingDirectory</key>
+    <string>/path/to/wyzer-mcp</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -192,6 +195,23 @@ launchctl load ~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist
 
 To stop/unload:
 ```bash
+launchctl unload ~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist
+```
+
+#### Managing the service
+
+```bash
+# Check status
+launchctl list | grep wyzer
+
+# View logs
+tail -f /tmp/wyzer-mcp-proxy.err
+
+# Restart
+launchctl unload ~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist
+launchctl load ~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist
+
+# Stop
 launchctl unload ~/Library/LaunchAgents/com.wyzer.mcp-proxy.plist
 ```
 

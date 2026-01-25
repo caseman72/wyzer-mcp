@@ -44,7 +44,7 @@ export async function discoverDevices(forceRefresh = false) {
       nickname: device.nickname,
       product_model: device.product_model,
       product_type: device.product_type,
-      is_online: device.is_online,
+      is_online: device.conn_state === 1,
       raw: device
     };
 
@@ -151,20 +151,14 @@ export async function getDeviceStatus(device) {
 
   if (device.type === 'plug') {
     const state = await wyze.getPlugState(device.id, device.product_model);
-    // RSSI is in raw.property_list as P1612
-    // Check if the timestamp is recent (within last hour) to determine online status
-    let rssi = null;
-    let isOnline = false;
-    let lastSeen = null;
     const props = state.raw?.property_list || [];
+    // P5 is connection status (1=online, 0=offline), updates more frequently than device list
+    const connProp = props.find(p => p.pid === 'P5');
+    const isOnline = connProp?.value === '1';
+    // P1612 is RSSI signal strength
     const rssiProp = props.find(p => p.pid === 'P1612');
-    if (rssiProp) {
-      rssi = parseInt(rssiProp.value, 10);
-      const tsAge = Date.now() - rssiProp.ts;
-      const twoDays = 2 * 24 * 60 * 60 * 1000;
-      isOnline = tsAge < twoDays;
-      lastSeen = new Date(rssiProp.ts).toISOString();
-    }
+    const rssi = rssiProp ? parseInt(rssiProp.value, 10) : null;
+    const lastSeen = connProp ? new Date(connProp.ts).toISOString() : null;
     return {
       id: device.id,
       nickname: device.nickname,

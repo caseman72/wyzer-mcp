@@ -77,10 +77,7 @@ class WyzeMcpThermostat(ClimateEntity):
     """A climate entity that controls a Wyze thermostat via MCP."""
 
     _attr_should_poll = True
-    _attr_supported_features = (
-        ClimateEntityFeature.TARGET_TEMPERATURE
-        | ClimateEntityFeature.AUX_HEAT
-    )
+    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
     _attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
 
@@ -103,7 +100,6 @@ class WyzeMcpThermostat(ClimateEntity):
         self._attr_target_temperature_low = None
         self._attr_hvac_mode = None
         self._attr_hvac_action = None
-        self._attr_is_aux_heat = None
         self._is_online = None  # Track thermostat connectivity
 
     @property
@@ -256,28 +252,6 @@ class WyzeMcpThermostat(ClimateEntity):
                 self._attr_target_temperature = temp
                 self.async_write_ha_state()
 
-    async def async_turn_aux_heat_on(self) -> None:
-        """Turn auxiliary heater (plug) on."""
-        if self._is_combined:
-            result = await self._call_tool("control_thermostat", {
-                "deviceId": self._device_id,
-                "action": "turn_on"
-            })
-            if result and "error" not in result:
-                self._attr_is_aux_heat = True
-                self.async_write_ha_state()
-
-    async def async_turn_aux_heat_off(self) -> None:
-        """Turn auxiliary heater (plug) off."""
-        if self._is_combined:
-            result = await self._call_tool("control_thermostat", {
-                "deviceId": self._device_id,
-                "action": "turn_off"
-            })
-            if result and "error" not in result:
-                self._attr_is_aux_heat = False
-                self.async_write_ha_state()
-
     async def async_update(self) -> None:
         """Fetch the current state."""
         result = await self._call_tool("get_device_status", {
@@ -302,10 +276,6 @@ class WyzeMcpThermostat(ClimateEntity):
             # HVAC action (what it's currently doing)
             working_state = thermo_data.get("working_state", "idle")
             self._attr_hvac_action = HVAC_ACTION_MAP.get(working_state, HVACAction.IDLE)
-
-            # Aux heat state (plug state for combined devices)
-            if self._is_combined:
-                self._attr_is_aux_heat = plug_data.get("is_on", False)
 
             # Temperature setpoints
             heat_setpoint = thermo_data.get("heat_setpoint")

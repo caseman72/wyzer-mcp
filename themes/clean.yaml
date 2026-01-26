@@ -1,0 +1,25 @@
+clean:
+  # Inherit dark mode
+  modes:
+    dark:
+      # Hide entities toggle using card-mod
+      card-mod-theme: clean
+      card-mod-root: |
+        hui-entities-toggle {
+          display: none !important;
+        }
+      card-mod-view: |
+        hui-entities-toggle {
+          display: none !important;
+        }
+    light:
+      # Hide entities toggle using card-mod
+      card-mod-theme: clean
+      card-mod-root: |
+        hui-entities-toggle {
+          display: none !important;
+        }
+      card-mod-view: |
+        hui-entities-toggle {
+          display: none !important;
+        }

@@ -91,6 +91,8 @@ mcp-proxy --port 8081 --host 0.0.0.0 -- node /path/to/wyzer-mcp/src/index.js
 
 ### Home Assistant Integration
 
+Tested with Home Assistant **2026.1.3**.
+
 1. Copy the custom component to your HA config directory:
    ```bash
    cp -r custom_components/wyzer_mcp ~/.home-assistant/custom_components/
@@ -103,6 +105,31 @@ mcp-proxy --port 8081 --host 0.0.0.0 -- node /path/to/wyzer-mcp/src/index.js
 4. Enter connection details:
    - Host: `host.docker.internal` (for Docker) or your Mac's IP
    - Port: `8081`
+
+#### Optional: Card-Mod and Theme
+
+This repo includes a [card-mod](https://github.com/thomasloven/lovelace-card-mod) JS file and a clean theme for customizing the HA frontend. To install:
+
+```bash
+# Copy card-mod.js to HA www directory
+mkdir -p ~/.home-assistant/www
+cp card-mod.js ~/.home-assistant/www/
+
+# Copy the clean theme
+mkdir -p ~/.home-assistant/themes
+cp themes/clean.yaml ~/.home-assistant/themes/
+```
+
+Then add to your `configuration.yaml`:
+
+```yaml
+frontend:
+  themes: !include_dir_merge_named themes
+  extra_module_url:
+    - /local/card-mod.js
+```
+
+The included `configuration.yaml` shows a complete example with template sensors.
 
 #### Configure Devices
 

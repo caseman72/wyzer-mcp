@@ -4,9 +4,9 @@ node_modules/
 .tokens.json
 .devices.json
 .DS_Store
-.rcs
+**/.rcs/
 config.json
 config.local.json
 *.log
-.claude/
+**/.claude/
 custom_components/wyzer_mcp/devices.yaml

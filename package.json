@@ -1,5 +1,5 @@
 {
-  "name": "wyzer-mcp",
+  "name": "@caseman72/wyzer-mcp",
   "version": "1.0.1",
   "description": "MCP server for Wyze smart home devices",
   "type": "module",

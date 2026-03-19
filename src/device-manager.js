@@ -32,7 +32,7 @@ export async function discoverDevices(forceRefresh = false) {
   }
 
   const wyze = await getWyzeClient();
-  const allDevices = await wyze.getDevices();
+  const allDevices = await wyze.getDevices(forceRefresh);
 
   const plugs = [];
   const switches = [];

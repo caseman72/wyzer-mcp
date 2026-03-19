@@ -2,7 +2,7 @@
   "domain": "wyzer_mcp",
   "name": "Wyze MCP",
   "version": "1.0.0",
-  "documentation": "https://github.com/your-repo/wyzer-mcp",
+  "documentation": "https://github.com/caseman72/wyzer-mcp",
   "dependencies": ["mcp"],
   "codeowners": [],
   "requirements": [],

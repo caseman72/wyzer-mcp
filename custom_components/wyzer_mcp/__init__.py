@@ -13,7 +13,7 @@ from .const import DOMAIN, DEFAULT_HOST, DEFAULT_PORT, CONF_MCP_HOST, CONF_MCP_P
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SWITCH, Platform.CLIMATE, Platform.SENSOR]
+PLATFORMS = [Platform.SWITCH, Platform.CLIMATE, Platform.FAN, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

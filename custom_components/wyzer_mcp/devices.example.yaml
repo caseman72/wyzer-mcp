@@ -15,6 +15,12 @@ switches:
     device_id: "LD_SS1_XXXXXXXXXXXX"
     device_type: switch
 
+purifiers:
+  # Air Purifiers (creates a fan entity with preset modes + an AQI sensor)
+  - id: my_purifier
+    name: My Purifier
+    device_id: "CO_AP1_XXXXXXXXXXXX"
+
 thermostats:
   # Standalone thermostat
   - id: my_thermostat

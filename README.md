@@ -149,6 +149,12 @@ switches:
     device_id: "LD_SS1_XXXXXXXXXXXX"
     device_type: switch
 
+purifiers:
+  # Air Purifiers (fan entity with preset modes + AQI sensor)
+  - id: my_purifier
+    name: My Purifier
+    device_id: "CO_AP1_XXXXXXXXXXXX"
+
 thermostats:
   # Combined thermostat + plug (for space heaters)
   - id: my_thermostat
@@ -172,6 +178,8 @@ The integration creates the following entity types:
 | Wall Switches | `switch` | On/off control for Wyze wall switches |
 | Thermostats | `climate` | Temperature control, HVAC mode |
 | Heater Switches | `switch` | On/off control for plug in combined devices |
+| Air Purifiers | `fan` | On/off + preset modes (auto/sleep/min/mid/max/turbo), AQI attribute |
+| AQI | `sensor` | Air quality index reading per purifier |
 | API Status | `sensor` | Shows API rate limit info |
 
 #### Device Availability

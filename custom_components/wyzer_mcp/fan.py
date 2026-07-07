@@ -1,16 +1,12 @@
-"""Sensor platform for Wyze MCP API status."""
+"""Fan platform for Wyze MCP air purifiers."""
 import logging
 import json
 import asyncio
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 import aiohttp
 
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-)
+from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -21,27 +17,27 @@ SCAN_INTERVAL = timedelta(seconds=60)
 
 _LOGGER = logging.getLogger(__name__)
 
+PRESET_MODES = ["auto", "sleep", "min", "mid", "max", "turbo"]
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Wyze MCP sensors from a config entry."""
+    """Set up Wyze MCP air purifier fans from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     devices = data.get("devices", {})
     host = data["host"]
     port = data["port"]
 
-    entities = [
-        WyzeMcpApiRateSensor(host, port),
-        WyzeMcpApiExpirationSensor(host, port),
-    ]
-
-    # Add AQI sensors for air purifiers
-    for purifier_config in devices.get("purifiers", []):
+    entities = []
+    purifiers = devices.get("purifiers", [])
+    _LOGGER.debug("Setting up %d purifiers from config", len(purifiers))
+    for purifier_config in purifiers:
+        _LOGGER.debug("Adding purifier: %s", purifier_config)
         entities.append(
-            WyzeMcpAqiSensor(
+            WyzeMcpPurifierFan(
                 purifier_id=purifier_config["id"],
                 name=purifier_config["name"],
                 device_id=purifier_config["device_id"],
@@ -53,43 +49,63 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class WyzeMcpBaseSensor(SensorEntity):
-    """Base class for Wyze MCP sensors."""
+class WyzeMcpPurifierFan(FanEntity):
+    """A fan entity that controls a Wyze air purifier via MCP."""
 
     _attr_should_poll = True
+    _attr_icon = "mdi:air-purifier"
+    _attr_supported_features = (
+        FanEntityFeature.TURN_ON
+        | FanEntityFeature.TURN_OFF
+        | FanEntityFeature.PRESET_MODE
+    )
+    _attr_preset_modes = PRESET_MODES
 
-    def __init__(self, host: str, port: int):
-        """Initialize the sensor."""
+    def __init__(self, purifier_id: str, name: str, device_id: str, host: str, port: int):
+        """Initialize the purifier fan."""
+        self._purifier_id = purifier_id
+        self._attr_name = name
+        self._device_id = device_id
         self._host = host
         self._port = port
-        self._attr_native_value = None
+        self._attr_unique_id = f"wyzer_mcp_{purifier_id}"
+        self._attr_is_on = None
+        self._attr_preset_mode = None
+        self._attr_available = True
         self._attr_extra_state_attributes = {}
 
     async def async_added_to_hass(self) -> None:
         """Fetch initial state when entity is added to HA."""
+        _LOGGER.debug("Purifier entity added to HA: %s", self._attr_name)
         await super().async_added_to_hass()
         self.async_schedule_update_ha_state(True)
 
-    async def _call_tool(self, tool_name: str, arguments: dict = None) -> dict:
+    async def _call_tool(self, tool_name: str, arguments: dict) -> dict:
         """Call an MCP tool via HTTP/SSE using aiohttp."""
         base_url = f"http://{self._host}:{self._port}"
-        arguments = arguments or {}
+
+        _LOGGER.debug("Calling MCP tool %s with %s", tool_name, arguments)
 
         try:
             timeout = aiohttp.ClientTimeout(total=30)
             async with aiohttp.ClientSession(timeout=timeout) as session:
+                # Connect to SSE endpoint to get session ID
                 async with session.get(f"{base_url}/sse") as sse_resp:
                     session_id = None
 
+                    # Read SSE events to find the endpoint
                     async for line in sse_resp.content:
                         line = line.decode('utf-8').strip()
                         if line.startswith('data:'):
                             data = line[5:].strip()
+                            # Handle both JSON and plain string formats
                             if data.startswith('/messages/'):
+                                # Plain endpoint string: /messages/?session_id=xxx
                                 if 'session_id=' in data:
                                     session_id = data.split('session_id=')[1]
                                     break
                             else:
+                                # Try JSON format
                                 try:
                                     parsed = json.loads(data)
                                     if isinstance(parsed, dict):
@@ -104,6 +120,7 @@ class WyzeMcpBaseSensor(SensorEntity):
                         _LOGGER.error("Failed to get MCP session ID")
                         return None
 
+                    # Initialize the session
                     messages_url = f"{base_url}/messages/?session_id={session_id}"
 
                     init_request = {
@@ -119,10 +136,13 @@ class WyzeMcpBaseSensor(SensorEntity):
 
                     async with session.post(messages_url, json=init_request) as init_resp:
                         if init_resp.status != 202:
+                            _LOGGER.error("MCP initialize failed: %s", await init_resp.text())
                             return None
 
+                    # Wait for init response via SSE
                     await asyncio.sleep(0.1)
 
+                    # Send initialized notification
                     notif_request = {
                         "jsonrpc": "2.0",
                         "method": "notifications/initialized"
@@ -130,6 +150,7 @@ class WyzeMcpBaseSensor(SensorEntity):
                     async with session.post(messages_url, json=notif_request):
                         pass
 
+                    # Call the tool
                     tool_request = {
                         "jsonrpc": "2.0",
                         "id": 2,
@@ -142,13 +163,16 @@ class WyzeMcpBaseSensor(SensorEntity):
 
                     async with session.post(messages_url, json=tool_request) as tool_resp:
                         if tool_resp.status != 202:
+                            _LOGGER.error("MCP tool call failed: %s", await tool_resp.text())
                             return None
 
+                    # Read the response from SSE stream
                     async for line in sse_resp.content:
                         line = line.decode('utf-8').strip()
                         if line.startswith('data:'):
                             try:
                                 data = json.loads(line[5:].strip())
+                                # Look for the tool result (id: 2)
                                 if isinstance(data, dict) and data.get('id') == 2:
                                     result = data.get('result', {})
                                     content = result.get('content', [])
@@ -168,95 +192,61 @@ class WyzeMcpBaseSensor(SensorEntity):
             _LOGGER.error("MCP tool call failed: %s", e)
             return None
 
-
-class WyzeMcpApiRateSensor(WyzeMcpBaseSensor):
-    """Sensor showing Wyze API rate limit status."""
-
-    _attr_name = "Wyze API Rate Status"
-    _attr_unique_id = "wyzer_mcp_api_rate_status"
-    _attr_icon = "mdi:api"
-
-    async def async_update(self) -> None:
-        """Fetch the current API status."""
-        result = await self._call_tool("get_api_status")
-
+    async def async_turn_on(self, percentage=None, preset_mode=None, **kwargs) -> None:
+        """Turn the purifier on, optionally with a preset mode."""
+        arguments = {
+            "deviceId": self._device_id,
+            "state": "on"
+        }
+        if preset_mode:
+            arguments["fanMode"] = preset_mode
+        result = await self._call_tool("control_purifier", arguments)
         if result and "error" not in result:
-            rate_limit = result.get("rate_limit", {})
-            cache = result.get("cache", {})
+            self._attr_is_on = True
+            if preset_mode:
+                self._attr_preset_mode = preset_mode
+            self.async_write_ha_state()
 
-            remaining = rate_limit.get("remaining")
-            reset_in = rate_limit.get("reset_in_seconds")
+    async def async_turn_off(self, **kwargs) -> None:
+        """Turn the purifier off."""
+        result = await self._call_tool("control_purifier", {
+            "deviceId": self._device_id,
+            "state": "off"
+        })
+        if result and "error" not in result:
+            self._attr_is_on = False
+            self.async_write_ha_state()
 
-            # Main value is remaining calls
-            self._attr_native_value = remaining
-
-            # Additional attributes
-            self._attr_extra_state_attributes = {
-                "remaining_calls": remaining,
-                "reset_by": rate_limit.get("reset_by"),
-                "reset_in_seconds": reset_in,
-                "reset_in_minutes": round(reset_in / 60, 1) if reset_in else None,
-                "cache_last_refresh": cache.get("last_refresh"),
-                "cached_device_count": cache.get("device_count"),
-            }
-
-
-class WyzeMcpAqiSensor(WyzeMcpBaseSensor):
-    """Sensor showing an air purifier's AQI reading."""
-
-    _attr_device_class = SensorDeviceClass.AQI
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(self, purifier_id: str, name: str, device_id: str, host: str, port: int):
-        """Initialize the AQI sensor."""
-        super().__init__(host, port)
-        self._device_id = device_id
-        self._attr_name = f"{name} AQI"
-        self._attr_unique_id = f"wyzer_mcp_{purifier_id}_aqi"
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the purifier fan mode."""
+        result = await self._call_tool("control_purifier", {
+            "deviceId": self._device_id,
+            "fanMode": preset_mode
+        })
+        if result and "error" not in result:
+            self._attr_preset_mode = preset_mode
+            self.async_write_ha_state()
 
     async def async_update(self) -> None:
-        """Fetch the current AQI."""
+        """Fetch the current state."""
+        _LOGGER.debug("async_update called for %s", self._attr_name)
         result = await self._call_tool("get_device_status", {
             "deviceId": self._device_id
         })
-
+        _LOGGER.debug("MCP result for %s: %s", self._attr_name, result)
         if result and "error" not in result:
             is_online = result.get("is_online")
             if is_online is not None:
                 self._attr_available = is_online
 
-            self._attr_native_value = result.get("aqi")
+            is_on = result.get("is_on")
+            if is_on is not None:
+                self._attr_is_on = is_on in (True, "on", 1, "1")
+
+            fan_mode = result.get("fan_mode")
+            if fan_mode in PRESET_MODES:
+                self._attr_preset_mode = fan_mode
 
             self._attr_extra_state_attributes = {
-                "fan_mode": result.get("fan_mode"),
-                "is_on": result.get("is_on"),
-            }
-
-
-class WyzeMcpApiExpirationSensor(WyzeMcpBaseSensor):
-    """Sensor showing Wyze API key expiration."""
-
-    _attr_name = "Wyze API Expiration"
-    _attr_unique_id = "wyzer_mcp_api_expiration"
-    _attr_icon = "mdi:calendar-clock"
-
-    async def async_update(self) -> None:
-        """Fetch the current API key expiration."""
-        result = await self._call_tool("get_api_status")
-
-        if result and "error" not in result:
-            api_key = result.get("api_key", {})
-
-            expires = api_key.get("expires")
-            days_remaining = api_key.get("days_remaining")
-
-            # Main value is days remaining
-            self._attr_native_value = days_remaining
-
-            # Additional attributes
-            self._attr_extra_state_attributes = {
-                "expires": expires,
-                "days_remaining": days_remaining,
-                "is_expired": api_key.get("is_expired"),
-                "is_expiring_soon": api_key.get("is_expiring_soon"),
+                "aqi": result.get("aqi"),
             }

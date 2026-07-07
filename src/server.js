@@ -7,11 +7,13 @@ import {
   findPlug,
   findSwitch,
   findThermostat,
+  findPurifier,
   findCombined,
   getDeviceStatus,
   controlPlug,
   controlSwitch,
   controlThermostat,
+  controlPurifier,
   controlCombinedDevice,
   getDeviceCache
 } from './device-manager.js';
@@ -29,7 +31,7 @@ export function createMcpServer() {
     'list_devices',
     'List all discovered Wyze devices with their current status. Optionally filter by device type.',
     {
-      type: z.enum(['plug', 'switch', 'thermostat', 'combined', 'all']).optional()
+      type: z.enum(['plug', 'switch', 'thermostat', 'purifier', 'combined', 'all']).optional()
         .describe('Filter devices by type. Defaults to "all".'),
       refresh: z.boolean().optional()
         .describe('Force refresh device list from Wyze API')
@@ -47,6 +49,8 @@ export function createMcpServer() {
         devices = cache.switches;
       } else if (type === 'thermostat') {
         devices = cache.thermostats;
+      } else if (type === 'purifier') {
+        devices = cache.purifiers;
       } else if (type === 'combined') {
         devices = cache.combined;
       }
@@ -202,10 +206,55 @@ export function createMcpServer() {
     })
   );
 
+  // Tool: control_purifier
+  server.tool(
+    'control_purifier',
+    'Control a Wyze air purifier. Set power state (on/off) and/or fan mode. Use device ID or nickname to identify the purifier.',
+    {
+      deviceId: z.string().describe('Device ID (MAC) or nickname of the air purifier'),
+      state: z.enum(['on', 'off']).optional()
+        .describe('Desired power state: "on" or "off"'),
+      fanMode: z.enum(['auto', 'sleep', 'min', 'mid', 'max', 'turbo']).optional()
+        .describe('Fan mode to set')
+    },
+    createToolWrapper('control_purifier', async ({ deviceId, state, fanMode }) => {
+      await discoverDevices();
+      const purifierDevice = findPurifier(deviceId);
+
+      if (!purifierDevice) {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({ error: `Air purifier not found: ${deviceId}` })
+          }],
+          isError: true
+        };
+      }
+
+      if (!state && !fanMode) {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({ error: 'Provide state and/or fanMode' })
+          }],
+          isError: true
+        };
+      }
+
+      const result = await controlPurifier(purifierDevice, { state, fanMode });
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result, null, 2)
+        }]
+      };
+    })
+  );
+
   // Tool: get_device_status
   server.tool(
     'get_device_status',
-    'Get detailed status of any Wyze device. Returns temperature, humidity, setpoints for thermostats; on/off state for plugs and switches.',
+    'Get detailed status of any Wyze device. Returns temperature, humidity, setpoints for thermostats; on/off state for plugs and switches; AQI and fan mode for air purifiers.',
     {
       deviceId: z.string().describe('Device ID (MAC) or nickname of the device')
     },

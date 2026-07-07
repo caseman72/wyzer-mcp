@@ -1,10 +1,10 @@
 # Wyzer MCP Server
 
-A Node.js MCP (Model Context Protocol) server that exposes Wyze smart home devices (plugs, switches, thermostats) for control via Claude Desktop or Home Assistant.
+A Node.js MCP (Model Context Protocol) server that exposes Wyze smart home devices (plugs, switches, thermostats, air purifiers) for control via Claude Desktop or Home Assistant.
 
 ## Features
 
-- **Device Discovery**: Automatically discovers all Wyze plugs, switches, and thermostats
+- **Device Discovery**: Automatically discovers all Wyze plugs, switches, thermostats, and air purifiers
 - **Combined Devices**: Intelligently combines thermostats and plugs with the same nickname for unified control
 - **Online Detection**: Tracks device availability based on last-seen timestamps (2-day threshold)
 - **Dual Transport**: Supports both stdio (Claude Desktop) and HTTP/SSE (Home Assistant)
@@ -265,7 +265,7 @@ Add to `~/.claude/claude_desktop_config.json`:
 List all discovered Wyze devices with their current status.
 
 **Parameters:**
-- `type` (optional): Filter by device type - `plug`, `switch`, `thermostat`, `combined`, or `all`
+- `type` (optional): Filter by device type - `plug`, `switch`, `thermostat`, `purifier`, `combined`, or `all`
 - `refresh` (optional): Force refresh device list from Wyze API
 
 ### `control_plug`
@@ -294,6 +294,17 @@ Control a Wyze thermostat. For combined thermostat+plug devices, `turn_on`/`turn
 - `temperature` (optional): Temperature setpoint (required for `set_heat` and `set_cool`)
 - `mode` (optional): Thermostat mode (required for `set_mode`) - `heat`, `cool`, `auto`, or `off`
 
+### `control_purifier`
+
+Control a Wyze air purifier. Set power state and/or fan mode.
+
+**Parameters:**
+- `deviceId`: Device ID (MAC) or nickname of the air purifier
+- `state` (optional): `on` or `off`
+- `fanMode` (optional): `auto`, `sleep`, `min`, `mid`, `max`, or `turbo`
+
+At least one of `state` or `fanMode` is required.
+
 ### `get_device_status`
 
 Get detailed status of any Wyze device. Returns online status, last seen timestamp, and current state.
@@ -307,6 +318,7 @@ Get detailed status of any Wyze device. Returns online status, last seen timesta
 - `rssi`: Signal strength (for plugs)
 - `is_on`: Current on/off state
 - Temperature/humidity/setpoints (for thermostats)
+- AQI and fan mode (for air purifiers)
 
 ### `get_api_status`
 

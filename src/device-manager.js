@@ -7,10 +7,15 @@ const DEVICE_TYPES = {
   THERMOSTAT: 'Thermostat'
 };
 
+// Air purifiers report product_type "Common" (same as wall switches),
+// so they must be identified by product_model
+const PURIFIER_MODEL = 'CO_AP1';
+
 let deviceCache = {
   plugs: [],
   switches: [],
   thermostats: [],
+  purifiers: [],
   combined: [],
   lastRefresh: null
 };
@@ -37,6 +42,7 @@ export async function discoverDevices(forceRefresh = false) {
   const plugs = [];
   const switches = [];
   const thermostats = [];
+  const purifiers = [];
 
   for (const device of allDevices) {
     const deviceInfo = {
@@ -50,6 +56,8 @@ export async function discoverDevices(forceRefresh = false) {
 
     if (device.product_type === DEVICE_TYPES.PLUG) {
       plugs.push({ ...deviceInfo, type: 'plug' });
+    } else if (device.product_model === PURIFIER_MODEL) {
+      purifiers.push({ ...deviceInfo, type: 'purifier' });
     } else if (device.product_type === DEVICE_TYPES.SWITCH) {
       switches.push({ ...deviceInfo, type: 'switch' });
     } else if (device.product_type === DEVICE_TYPES.THERMOSTAT) {
@@ -87,6 +95,7 @@ export async function discoverDevices(forceRefresh = false) {
     plugs: standaloneplugs,
     switches,
     thermostats,
+    purifiers,
     combined,
     lastRefresh: Date.now()
   };
@@ -99,6 +108,7 @@ export function getAllDevices() {
     ...deviceCache.plugs,
     ...deviceCache.switches,
     ...deviceCache.thermostats,
+    ...deviceCache.purifiers,
     ...deviceCache.combined
   ];
 }
@@ -140,6 +150,10 @@ export function findThermostat(idOrName) {
 
 export function findSwitch(idOrName) {
   return findDevice(idOrName, 'switch');
+}
+
+export function findPurifier(idOrName) {
+  return findDevice(idOrName, 'purifier');
 }
 
 export function findCombined(idOrName) {
@@ -200,6 +214,23 @@ export async function getDeviceStatus(device) {
     };
   }
 
+  if (device.type === 'purifier') {
+    const [info, aqi, state] = await Promise.all([
+      wyze.getPurifier(device.id),
+      wyze.getPurifierAqi(device.id, device.product_model),
+      wyze.getPurifierState(device.id, device.product_model)
+    ]);
+    return {
+      id: device.id,
+      nickname: device.nickname,
+      type: device.type,
+      is_online: info.connected,
+      is_on: state.switch_state,
+      fan_mode: info.fanMode,
+      aqi: aqi
+    };
+  }
+
   if (device.type === 'combined') {
     const [thermostatStatus, plugStatus] = await Promise.all([
       getDeviceStatus(device.thermostat),
@@ -243,6 +274,28 @@ export async function controlSwitch(device, state) {
   }
 
   return { success: true, device: device.nickname, state: turnOn ? 'on' : 'off' };
+}
+
+export async function controlPurifier(device, params = {}) {
+  const wyze = await getWyzeClient();
+  const result = { success: true, device: device.nickname };
+
+  if (params.state) {
+    const turnOn = params.state === 'on' || params.state === true;
+    if (turnOn) {
+      await wyze.purifierOn(device.id, device.product_model);
+    } else {
+      await wyze.purifierOff(device.id, device.product_model);
+    }
+    result.state = turnOn ? 'on' : 'off';
+  }
+
+  if (params.fanMode) {
+    await wyze.setPurifierFanMode(device.id, params.fanMode, device.product_model);
+    result.fan_mode = params.fanMode;
+  }
+
+  return result;
 }
 
 export async function controlThermostat(device, action, params = {}) {
